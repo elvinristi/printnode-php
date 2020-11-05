@@ -1,6 +1,6 @@
 <?php
 
-namespace PrintNode;
+namespace PrintNode\Entities;
 
 /**
  * Scale
@@ -21,7 +21,7 @@ namespace PrintNode;
  * @property-read int $vendorId
  * @property-read int $productId
  */
-class Scale extends Entity
+class Scale extends \PrintNode\Entity
 {
     protected $mass;
     protected $deviceName;
@@ -40,7 +40,6 @@ class Scale extends Entity
 
     public function foreignKeyEntityMap()
     {
-        return array(
-        );
+        return [];
     }
 }

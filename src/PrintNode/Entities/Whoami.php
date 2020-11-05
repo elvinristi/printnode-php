@@ -1,6 +1,6 @@
 <?php
 
-namespace PrintNode;
+namespace PrintNode\Entities;
 
 /**
  * Whoami
@@ -25,7 +25,7 @@ namespace PrintNode;
  * @property-read string $state
  * @property-read string[] $permissions
  */
-class Whoami extends Entity
+class Whoami extends \PrintNode\Entity
 {
     protected $id;
     protected $firstname;
@@ -47,6 +47,6 @@ class Whoami extends Entity
 
     public function foreignKeyEntityMap()
     {
-        return array();
+        return [];
     }
 }

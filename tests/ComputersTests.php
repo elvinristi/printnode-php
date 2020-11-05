@@ -9,7 +9,7 @@ class RequestTest extends PHPUnit_Framework_TestCase
 
 	public function createAccount(){
 		$request = new PrintNode\Request($this->credentials);
-		$account = new PrintNode\Account();
+		$account = new PrintNode\Entities\Account();
 		$account->Account = array(
 			"firstname" => "AFirstName",
 			"lastname" => "ALastName",
@@ -104,7 +104,7 @@ class RequestTest extends PHPUnit_Framework_TestCase
 	public function testPrintJobsPost(){
 		$request = new PrintNode\Request($this->credentials);
 		$printers = $request->getPrinters();
-		$printJob = new PrintNode\PrintJob();
+		$printJob = new PrintNode\Entities\PrintJob();
 		$printJob->printer = $printers[0];
 		$printJob->contentType = 'pdf_base64';
 		$printJob->content = base64_encode(file_get_contents('a4_portrait.pdf'));

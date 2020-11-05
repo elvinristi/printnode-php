@@ -1,16 +1,15 @@
 <?php
 
-namespace PrintNode;
+namespace PrintNode\Entities;
 
 /**
  * Tag
- *
  * Object representing a Tag for POST in PrintNode API
  *
  * @property-read String $name
  * @property-read String $value
  */
-class Tag extends Entity
+class Tag extends \PrintNode\Entity
 {
     protected $name;
     protected $value;
@@ -20,14 +19,13 @@ class Tag extends Entity
         return $this->name;
     }
 
-	public function formatForPost()
-	{
-		return json_encode($this->value);
-	}
+    public function formatForPost()
+    {
+        return $this->dataToJson($this->value);
+    }
 
     public function foreignKeyEntityMap()
     {
-        return array(
-        );
+        return [];
     }
 }

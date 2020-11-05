@@ -1,6 +1,6 @@
 <?php
 
-namespace PrintNode;
+namespace PrintNode\Entities;
 
 /**
  * ApiKey
@@ -9,7 +9,7 @@ namespace PrintNode;
  *
  * @property-read string $description
  */
-class ApiKey extends Entity
+class ApiKey extends \PrintNode\Entity
 {
     protected $description;
 
@@ -18,9 +18,11 @@ class ApiKey extends Entity
         return $this->description;
     }
 
+    /**
+     * @inheritDoc
+     */
     public function foreignKeyEntityMap()
     {
-        return array(
-        );
+        return [];
     }
 }
