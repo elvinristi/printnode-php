@@ -2,7 +2,7 @@
 
 namespace PrintNode\Api;
 
-interface HandlerRequestInterface
+interface HandlerRequestInterface extends MessageInterface
 {
     const METHOD_GET = 'GET';
     const METHOD_HEAD = 'HEAD';
@@ -10,15 +10,8 @@ interface HandlerRequestInterface
     const METHOD_PUT = 'PUT';
     const METHOD_DELETE = 'DELETE';
     const METHOD_PATCH = 'PATCH';
+    const METHOD_OPTIONS = 'OPTIONS';
 
     public function getUri(): string;
     public function getMethod(): string;
-    public function getBody();
-
-    /**
-     * @param string|null $body
-     *
-     * @return string|null
-     */
-    public function setBody(string $body = null);
 }

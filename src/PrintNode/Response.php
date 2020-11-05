@@ -2,6 +2,10 @@
 
 namespace PrintNode;
 
+use InvalidArgumentException;
+use PrintNode\Api\ResponseInterface;
+use PrintNode\Message\AbstractMessage;
+
 use function preg_grep;
 use function preg_match;
 
@@ -9,39 +13,67 @@ use function preg_match;
  * Response
  * HTTP response object.
  */
-class Response
+class Response extends AbstractMessage implements ResponseInterface
 {
     /**
-     * Original Request URL
-     *
+     * @var int
+     */
+    private $code;
+
+    /**
      * @var string
      */
-    private $url;
+    private $reasonPhrase;
 
-    /**
-     * Response headers
-     *
-     * @var mixed[]
-     */
-    private $headers;
+    public function __construct(
+        int $code = self::CODE_OK,
+        string $reasonPhrase = ''
+    ) {
+        $this->checkStatusCode($code);
+        $this->checkReasonPhrase($reasonPhrase);
 
-    /**
-     * Response body
-     *
-     * @var string
-     */
-    private $content;
+        $this->code = $code;
+        $this->reasonPhrase = $reasonPhrase;
+    }
 
-    /**
-     * @param mixed $url
-     * @param mixed $content
-     * @param mixed $headers
-     */
-    public function __construct($url, $content, array $headers)
+    public function getStatusCode(): int
     {
-        $this->url = $url;
-        $this->headers = $headers;
-        $this->content = $content;
+        return $this->code;
+    }
+
+    public function getReasonPhrase(): string
+    {
+        return $this->reasonPhrase;
+    }
+
+    /**
+     * Checks code is integer and between expected range
+     *
+     * @param $code
+     *
+     * @return void
+     */
+    private function checkStatusCode($code)
+    {
+        if (false === (is_int($code)
+                || filter_var($code, FILTER_VALIDATE_INT, ['options' => ['min_range' => 100, 'max_range' => 599]])
+            )) {
+            throw new InvalidArgumentException('Code is expected to be int and between 100 and 599');
+        }
+    }
+
+    /**
+     * Checks reason phrase is string type
+     *
+     * @param $reasonPhrase
+     *
+     * @return void
+     */
+    private function checkReasonPhrase($reasonPhrase)
+    {
+        if (false === is_string($reasonPhrase)) {
+            throw new InvalidArgumentException('Reason phrase expected to be type of string');
+        }
     }
 
     /**
@@ -54,7 +86,7 @@ class Response
      */
     private function getStatus()
     {
-        if (!($statusArray = preg_grep('/^HTTP\/(1.0|1.1)\s+(\d+)\s+(.+)/', $this->headers))) {
+        if (!($statusArray = preg_grep('/^HTTP\/(1.0|1.1)\s+(\d+)\s+(.+)/', $this->getHeaders()))) {
             throw new \RuntimeException('Could not determine HTTP status from API response');
         }
 
@@ -63,7 +95,7 @@ class Response
         }
 
         return [
-            'code' => $matchesArray[2],
+            'code' => $this->code,
             'message' => $matchesArray[3],
         ];
     }
@@ -77,7 +109,7 @@ class Response
      */
     public function getContent()
     {
-        return $this->content;
+        return parent::getBody();
     }
 
     /**
@@ -89,7 +121,7 @@ class Response
      */
     public function getHeaders()
     {
-        return $this->headers;
+        return \explode("\r\n", parent::getActualHeaders());
     }
 
     /**
@@ -101,21 +133,7 @@ class Response
      */
     public function getDecodedContent()
     {
-        return \json_decode($this->content, true);
-    }
-
-    /**
-     * Get HTTP status code
-     *
-     * @param void
-     *
-     * @return string
-     */
-    public function getStatusCode()
-    {
-        $status = $this->getStatus();
-
-        return $status['code'];
+        return $this->getBody() ? \json_decode($this->getBody(), true) : null;
     }
 
     /**
@@ -127,8 +145,6 @@ class Response
      */
     public function getStatusMessage()
     {
-        $status = $this->getStatus();
-
-        return $status['message'];
+        return $this->getStatus()['message'] ?? null;
     }
 }

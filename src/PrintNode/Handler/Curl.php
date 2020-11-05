@@ -5,6 +5,8 @@ namespace PrintNode\Handler;
 use PrintNode\Api\CurlInterface;
 use PrintNode\Api\HandlerInterface;
 use PrintNode\Api\HandlerRequestInterface;
+use PrintNode\Api\ResponseInterface;
+use PrintNode\HandlerException;
 use PrintNode\Response;
 use RuntimeException;
 use function array_pop;
@@ -61,118 +63,94 @@ class Curl implements CurlInterface, HandlerInterface
     }
 
 
-    public function run(HandlerRequestInterface $request, string $data = null): Response
+    public function run(HandlerRequestInterface $request): ResponseInterface
     {
         $this->checkExtensionLoaded();
 
         $curl = \curl_init($request->getUri());
 
         \curl_setopt_array($curl, $this->buildOptions($request) + CurlInterface::DEFAULT_OPTIONS);
-    }
 
-    /**
-     * Execute cURL request using the specified API EndPoint
-     *
-     * @param mixed $curlHandle
-     * @param mixed $endPointUrl
-     *
-     * @return Response
-     */
-    private function curlExec($curlHandle, $endPointUrl)
-    {
-        curl_setopt($curlHandle, CURLOPT_URL, $endPointUrl);
-        $response = @curl_exec($curlHandle);
+        $request->setTimestamp(\microtime(true));
+        $result = \curl_exec($curl);
+        $responseTimestamp = \microtime(true);
 
-        if ($response === false) {
-            throw new RuntimeException(
-                sprintf(
-                    'cURL Error (%d): %s',
-                    curl_errno($curlHandle),
-                    curl_error($curlHandle)
-                )
-            );
+        $request->setActualHeaders((string)\curl_getinfo($curl, \CURLINFO_HEADER_OUT));
+
+        if (false === $result) {
+            $errorCode = \curl_errno($curl);
+
+            if ($errorCode && isset(CurlInterface::EXCEPTIONS[$errorCode])) {
+                $message = CurlInterface::EXCEPTIONS[$errorCode] . ' ';
+            } else {
+                $message = null;
+            }
+
+            $message .= \curl_error($curl);
+
+            throw new HandlerException($message, $errorCode, $request);
+            // if CURLOPT_RETURNTRANSFER = false or PUT has been sent (PUT has no response payload) then result=true
+        } elseif (true === $result) {
+            $result = '';
         }
-        curl_close($curlHandle);
-        $response_parts = explode("\r\n\r\n", $response);
-        $content = array_pop($response_parts);
-        $headers = explode("\r\n", array_pop($response_parts));
 
-        return new Response($endPointUrl, $content, $headers);
+        $code = \curl_getinfo($curl, \CURLINFO_RESPONSE_CODE);
+        $responseHeaderSize = \curl_getinfo($curl, \CURLINFO_HEADER_SIZE);
+        \curl_close($curl);
+
+        $response = $this->getResponse($result, $code, $responseHeaderSize);
+        $response->setTimestamp($responseTimestamp);
+
+        return $response;
+    }
+
+    private function getResponse(string $result, int $code, int $headerSize): ResponseInterface
+    {
+        $headers = \substr($result, 0, $headerSize);
+        $responseBody = \substr($result, $headerSize);
+        $headersArr = \explode("\r\n", $this->filterResponseHeaders($headers));
+
+        // @see https://tools.ietf.org/html/rfc7230#section-3.1.2
+        if (0 === \strpos($headersArr[0], \strtoupper('http'))) {
+            list($protocolVersion, $code, $reasonPhrase) = \explode(' ', \substr($headersArr[0], 5));
+            unset($headersArr[0]);
+        }
+
+        $response = $this->createResponse((int)$code, $reasonPhrase ?? '');
+        $response->setActualHeaders($headers);
+        $response->setBody($responseBody);
+
+        return $response;
+    }
+
+    public function createResponse(int $code = 200, string $reasonPhrase = ''): ResponseInterface
+    {
+        return new Response($code, $reasonPhrase);
     }
 
     /**
-     * Make a GET request using cURL
+     * Filter response headers by cutting off exceeded header parts.
      *
-     * @param mixed $endPointUrl
+     * @param string $headers
      *
-     * @return Response
+     * @return string
      */
-    private function curlGet($endPointUrl)
+    private function filterResponseHeaders(string $headers): string
     {
-        $curlHandle = $this->curlInit();
-        curl_setopt($curlHandle, CURLOPT_HTTPHEADER, array_merge(
-            $this->childAuth,
-            $this->headers
-        ));
+        // cURL automatically decodes chunked-messages
+        $headers = \preg_replace("/Transfer-Encoding:\s*chunked\\r\\n/i", '', $headers);
 
-        return $this->curlExec(
-            $curlHandle,
-            $endPointUrl
-        );
-    }
-
-    private function curlDelete($endPointUrl)
-    {
-        $curlHandle = $this->curlInit();
-        curl_setopt($curlHandle, CURLOPT_CUSTOMREQUEST, 'DELETE');
-        curl_setopt($curlHandle, CURLOPT_HTTPHEADER, $this->childauth);
-
-        return $this->curlExec(
-            $curlHandle,
-            $endPointUrl
-        );
-    }
-
-    /**
-     * Make a POST/PUT/DELETE request using cURL
-     *
-     * @return Response
-     */
-    private function curlSend($httpMethod, string $data, $endPointUrl, ...$arguments)
-    {
-        $curlHandle = $this->curlInit();
-
-        curl_setopt($curlHandle, CURLOPT_CUSTOMREQUEST, $httpMethod);
-        curl_setopt($curlHandle, CURLOPT_POSTFIELDS, $data);
-        curl_setopt($curlHandle, CURLOPT_HTTPHEADER, array_merge(
-                ['Content-Type: application/json'],
-                $this->childAuth,
-                $this->headers)
+        // cURL automatically handles Proxy rewrites, remove the "HTTP/v.v 200 Connection established" string
+        $headers = \preg_replace(
+            '/HTTP\/\d.\d\s*200\s*Connection\s*established\\r\\n\\r\\n/',
+            '',
+            $headers
         );
 
-        return $this->curlExec(
-            $curlHandle,
-            $endPointUrl
-        );
-    }
+        // Eliminate multiple HTTP responses.
+        $headers = \preg_split('/(?:\r?\n){2}/m', \trim($headers, "\r\n"));
 
-    /**
-     * Initialise cURL with the options we need
-     * to communicate successfully with API URL.
-     *
-     * @param void
-     *
-     * @return resource|false
-     */
-    private function curlInit()
-    {
-        $this->checkExtensionLoaded();
-
-        $curlHandle = curl_init();
-
-        \curl_setopt_array($curlHandle, $this->buildOptions());
-
-        return $curlHandle;
+        return \array_pop($headers);
     }
 
     private function buildOptions(HandlerRequestInterface $request): array
@@ -195,16 +173,26 @@ class Curl implements CurlInterface, HandlerInterface
             $this->getAuthorizationOptions($request)
         ];
 
+        $headers = [];
 
-        if (\in_array($request->getMethod(), [HandlerRequestInterface::METHOD_POST,
-                                              HandlerRequestInterface::METHOD_PUT,
-                                              HandlerRequestInterface::METHOD_PATCH,
-                                              HandlerRequestInterface::METHOD_DELETE,
-                                              HandlerRequestInterface::METHOD_OPTIONS])
+        if (\in_array($request->getMethod(), [
+            HandlerRequestInterface::METHOD_POST,
+            HandlerRequestInterface::METHOD_PUT,
+            HandlerRequestInterface::METHOD_PATCH,
+            HandlerRequestInterface::METHOD_DELETE,
+            HandlerRequestInterface::METHOD_OPTIONS
+        ], true)
         ) {
+            $headers[] = 'Content-Type: application/json';
             $options[\CURLOPT_POST] = true;
-            $body = $request->getBody();
+            $options[\CURLOPT_POSTFIELDS] = $request->getBody() ?? '';
         }
+
+        $options[\CURLOPT_HTTPHEADER] = array_merge(
+            $headers,
+            $this->childAuth,
+            $this->headers
+        );
 
         return $options;
     }

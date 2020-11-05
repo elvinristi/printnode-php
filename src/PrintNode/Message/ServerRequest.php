@@ -4,7 +4,7 @@ namespace PrintNode\Message;
 
 use PrintNode\Api\HandlerRequestInterface;
 
-class ServerRequest implements HandlerRequestInterface
+class ServerRequest extends AbstractMessage implements HandlerRequestInterface
 {
     /**
      * @var string
@@ -15,7 +15,6 @@ class ServerRequest implements HandlerRequestInterface
      * @var string
      */
     private $method;
-    private $body;
 
     public function __construct(
         string $uri,
@@ -33,18 +32,5 @@ class ServerRequest implements HandlerRequestInterface
     public function getMethod(): string
     {
         return $this->method;
-    }
-
-    /**
-     * @inheritDoc
-     */
-    public function setBody(string $body = null)
-    {
-        return $this->body = $body;
-    }
-
-    public function getBody()
-    {
-        return $this->body;
     }
 }

@@ -3,13 +3,19 @@
 namespace PrintNode;
 
 use BadMethodCallException;
-use Exception;
 use InvalidArgumentException;
 use PrintNode\Api\HandlerInterface;
 use PrintNode\Api\HandlerRequestInterface;
+use PrintNode\Api\ResponseInterface;
+use PrintNode\Entities\Account;
+use PrintNode\Entities\ApiKey;
+use PrintNode\Entities\Client;
 use PrintNode\Entities\Computer;
+use PrintNode\Entities\Download;
 use PrintNode\Entities\Printer;
 use PrintNode\Entities\PrintJob;
+use PrintNode\Entities\Tag;
+use PrintNode\Entities\Whoami;
 use PrintNode\Message\ServerRequest;
 use RuntimeException;
 
@@ -27,12 +33,6 @@ use function min;
 use function parse_str;
 use function parse_url;
 use function sprintf;
-use PrintNode\Entities\Whoami;
-use PrintNode\Entities\Tag;
-use PrintNode\Entities\Account;
-use PrintNode\Entities\ApiKey;
-use PrintNode\Entities\Download;
-use PrintNode\Entities\Client;
 
 /**
  * HTTP request object.
@@ -63,16 +63,18 @@ class Request
      * @var string[]
      * */
     private $childauth = [];
+
     /**
      * Offset query argument on GET requests
      *
      * @var int
      */
     private $offset = 0;
+
     /**
      * Limit query argument on GET requests
      *
-     * @var mixed
+     * @var int
      */
     private $limit = 10;
 
@@ -212,9 +214,9 @@ class Request
      *
      * @param string $apikey
      *
-     * @return Response
+     * @return ResponseInterface
      * */
-    public function deleteApiKey($apikey)
+    public function deleteApiKey(string $apikey): ResponseInterface
     {
         $endPointUrl = "{$this->apiUrl}/account/apikey/{$apikey}";
 
@@ -226,9 +228,9 @@ class Request
      *
      * @param string $tag
      *
-     * @return Response
+     * @return ResponseInterface
      * */
-    public function deleteTag($tag)
+    public function deleteTag(string $tag): ResponseInterface
     {
         $endPointUrl = "{$this->apiUrl}/account/tag/{$tag}";
 
@@ -239,22 +241,11 @@ class Request
      * Delete a child account
      * MUST have $this->childauth set to run.
      *
-     * @return Response
-     * @throws \Exception
+     * @return ResponseInterface
      */
-    public function deleteAccount()
+    public function deleteAccount(): ResponseInterface
     {
-        if (!isset($this->childauth)) {
-            throw new Exception(
-                sprintf(
-                    'No child authentication set - cannot delete your own account.'
-                )
-            );
-        }
-
         $endPointUrl = "{$this->apiUrl}/account/";
-
-        $this->getHandler()->setChildAuth($this->childauth);
 
         return $this->callDelete($endPointUrl);
     }
@@ -266,9 +257,9 @@ class Request
      * @param string $edition
      * @param string $version
      *
-     * @return \PrintNode\Response
+     * @return ResponseInterface
      * */
-    public function getClientKey(string $uuid, string $edition, string  $version)
+    public function getClientKey(string $uuid, string $edition, string  $version): ResponseInterface
     {
         $endPointUrl = "{$this->apiUrl}/client/key/{$uuid}?edition={$edition}&version={$version}";
 
@@ -386,9 +377,9 @@ class Request
      *
      * @param Entity|\PrintNode\Entities\ApiKey|\PrintNode\Entities\Tag|\PrintNode\Entities\Account $entity
      *
-     * @return Response
+     * @return ResponseInterface
      * */
-    public function patch(Entity $entity)
+    public function patch(Entity $entity): ResponseInterface
     {
         return $this->sendEntityData($entity, HandlerRequestInterface::METHOD_PATCH);
     }
@@ -398,9 +389,9 @@ class Request
      *
      * @param Entity $entity
      *
-     * @return Response
+     * @return ResponseInterface
      */
-    public function post(Entity $entity)
+    public function post(Entity $entity): ResponseInterface
     {
         return $this->sendEntityData($entity, HandlerRequestInterface::METHOD_POST);
     }
@@ -411,9 +402,9 @@ class Request
      * @param Entity $entity
      * @param array  $args
      *
-     * @return Response
+     * @return ResponseInterface
      */
-    public function put(Entity $entity, ...$args)
+    public function put(Entity $entity, ...$args): ResponseInterface
     {
         $endPointUrl = $this->getEndPointUrl(get_class($entity));
         $endPointUrl .= implode('/', $args);
@@ -429,9 +420,9 @@ class Request
      *
      * @param Entity $entity
      *
-     * @return Response
+     * @return ResponseInterface
      */
-    public function delete(Entity $entity)
+    public function delete(Entity $entity): ResponseInterface
     {
         $endPointUrl = $this->getEndPointUrl(get_class($entity));
 
@@ -485,7 +476,7 @@ class Request
         return new ServerRequest($apiUrl, $method);
     }
 
-    private function callGet($endPointUrl): Response
+    private function callGet($endPointUrl): ResponseInterface
     {
         $request = $this->createRequest(
             $this->applyOffsetLimit($endPointUrl)
@@ -494,17 +485,28 @@ class Request
         return $this->getHandler()->run($request);
     }
 
-    private function callDelete($endPointUrl): Response
+    private function callDelete($endPointUrl): ResponseInterface
     {
+        if (!isset($this->childauth)) {
+            throw new RuntimeException(
+                sprintf(
+                    'No child authentication set - cannot call DELETE'
+                )
+            );
+        }
+
         $request = $this->createRequest(
             $endPointUrl,
             HandlerRequestInterface::METHOD_DELETE
         );
 
+
+        $this->getHandler()->setChildAuth($this->childauth);
+
         return $this->getHandler()->run($request);
     }
 
-    private function sendEntityData(Entity $entity, string $method): Response
+    private function sendEntityData(Entity $entity, string $method): ResponseInterface
     {
         $postData = null;
         $postDataMethod = null;
@@ -537,29 +539,29 @@ class Request
     }
 
     /**
-     * @param \PrintNode\Response $response
+     * @param ResponseInterface $response
      * @param string              $class
      *
      * @return \PrintNode\Entity[]
      * @throws \Exception
      */
-    private function responseToEntity(Response $response, string $class)
+    private function responseToEntity(ResponseInterface $response, string $class)
     {
-        return Entity::makeFromResponse($class, json_decode($response->getContent(), false));
+        return Entity::makeFromResponse($class, json_decode($response->getBody(), false));
     }
 
     /**
-     * @param \PrintNode\Response $response
+     * @param ResponseInterface $response
      * @throws RuntimeException
      */
-    private function validateResponse(Response $response)
+    private function validateResponse(ResponseInterface $response)
     {
-        if ($response->getStatusCode() != '200') {
+        if ($response->getStatusCode() !== ResponseInterface::CODE_OK) {
             throw new RuntimeException(
                 sprintf(
                     'HTTP Error (%d): %s',
                     $response->getStatusCode(),
-                    $response->getStatusMessage()
+                    $response->getReasonPhrase()
                 )
             );
         }
@@ -667,7 +669,7 @@ class Request
         $endPointUrl = (isset($endPointUrlArray['scheme'])) ? $endPointUrlArray['scheme'] . "://" : '';
         $endPointUrl .= (isset($endPointUrlArray['host'])) ? (string)($endPointUrlArray['host']) : '';
         $endPointUrl .= (isset($endPointUrlArray['port'])) ? ":{$endPointUrlArray['port']}" : '';
-        $endPointUrl .= (isset($endPointUrlArray['path'])) ? "{$endPointUrlArray['path']}" : '';
+        $endPointUrl .= (isset($endPointUrlArray['path'])) ? (string)($endPointUrlArray['path']) : '';
         $endPointUrl .= (isset($endPointUrlArray['query'])) ? "?{$endPointUrlArray['query']}" : '';
 
         return $endPointUrl;
