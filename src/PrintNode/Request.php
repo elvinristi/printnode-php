@@ -4,6 +4,7 @@ namespace PrintNode;
 
 use BadMethodCallException;
 use InvalidArgumentException;
+use PrintNode\Api\CredentialsInterface;
 use PrintNode\Api\HandlerInterface;
 use PrintNode\Api\HandlerRequestInterface;
 use PrintNode\Api\ResponseInterface;
@@ -46,7 +47,7 @@ class Request
     /**
      * Credentials to use when communicating with API
      *
-     * @var Credentials
+     * @var CredentialsInterface
      */
     private $credentials;
 
@@ -130,14 +131,14 @@ class Request
     /**
      * Request constructor.
      *
-     * @param \PrintNode\Credentials $credentials
+     * @param CredentialsInterface $credentials
      * @param array                  $endPointUrls
      * @param array                  $methodNameEntityMap
      * @param int                    $offset
      * @param int                    $limit
      */
     public function __construct(
-        Credentials $credentials,
+        CredentialsInterface $credentials,
         array $endPointUrls = [],
         array $methodNameEntityMap = [],
         int $offset = 0,

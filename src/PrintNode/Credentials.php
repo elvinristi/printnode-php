@@ -2,6 +2,7 @@
 
 namespace PrintNode;
 
+use PrintNode\Api\CredentialsInterface;
 use RuntimeException;
 
 use function get_class;

@@ -6,17 +6,23 @@ use PrintNode\Api\CurlInterface;
 use PrintNode\Api\HandlerInterface;
 use PrintNode\Api\HandlerRequestInterface;
 use PrintNode\Api\ResponseInterface;
+use PrintNode\Api\CredentialsInterface;
 use PrintNode\HandlerException;
 use PrintNode\Response;
 use RuntimeException;
+
 use function array_pop;
 use function curl_close;
+use function curl_errno;
+use function curl_error;
+use function curl_setopt_array;
 use function curl_init;
-use function curl_setopt;
 use function explode;
 use function extension_loaded;
 use function max;
-use function sprintf;
+use function preg_replace;
+use function preg_split;
+use function substr;
 
 class Curl implements CurlInterface, HandlerInterface
 {
@@ -38,7 +44,7 @@ class Curl implements CurlInterface, HandlerInterface
     private $timeout = 5;
 
     /**
-     * @var string
+     * @var CredentialsInterface
      */
     private $credentials;
 
@@ -47,7 +53,7 @@ class Curl implements CurlInterface, HandlerInterface
         $this->headers = $headers;
     }
 
-    public function setCredentials(string $credentials)
+    public function setCredentials(CredentialsInterface $credentials = null)
     {
         $this->credentials = $credentials;
     }
@@ -62,14 +68,16 @@ class Curl implements CurlInterface, HandlerInterface
         $this->childAuth = $childAuthHeader;
     }
 
-
+    /**
+     * @inheritDoc
+     */
     public function run(HandlerRequestInterface $request): ResponseInterface
     {
         $this->checkExtensionLoaded();
 
-        $curl = \curl_init($request->getUri());
+        $curl = curl_init($request->getUri());
 
-        \curl_setopt_array($curl, $this->buildOptions($request) + CurlInterface::DEFAULT_OPTIONS);
+        curl_setopt_array($curl, $this->buildOptions($request) + CurlInterface::DEFAULT_OPTIONS);
 
         $request->setTimestamp(\microtime(true));
         $result = \curl_exec($curl);
@@ -78,7 +86,7 @@ class Curl implements CurlInterface, HandlerInterface
         $request->setActualHeaders((string)\curl_getinfo($curl, \CURLINFO_HEADER_OUT));
 
         if (false === $result) {
-            $errorCode = \curl_errno($curl);
+            $errorCode = curl_errno($curl);
 
             if ($errorCode && isset(CurlInterface::EXCEPTIONS[$errorCode])) {
                 $message = CurlInterface::EXCEPTIONS[$errorCode] . ' ';
@@ -86,7 +94,7 @@ class Curl implements CurlInterface, HandlerInterface
                 $message = null;
             }
 
-            $message .= \curl_error($curl);
+            $message .= curl_error($curl);
 
             throw new HandlerException($message, $errorCode, $request);
             // if CURLOPT_RETURNTRANSFER = false or PUT has been sent (PUT has no response payload) then result=true
@@ -96,7 +104,7 @@ class Curl implements CurlInterface, HandlerInterface
 
         $code = \curl_getinfo($curl, \CURLINFO_RESPONSE_CODE);
         $responseHeaderSize = \curl_getinfo($curl, \CURLINFO_HEADER_SIZE);
-        \curl_close($curl);
+        curl_close($curl);
 
         $response = $this->getResponse($result, $code, $responseHeaderSize);
         $response->setTimestamp($responseTimestamp);
@@ -106,13 +114,13 @@ class Curl implements CurlInterface, HandlerInterface
 
     private function getResponse(string $result, int $code, int $headerSize): ResponseInterface
     {
-        $headers = \substr($result, 0, $headerSize);
-        $responseBody = \substr($result, $headerSize);
-        $headersArr = \explode("\r\n", $this->filterResponseHeaders($headers));
+        $headers = substr($result, 0, $headerSize);
+        $responseBody = substr($result, $headerSize);
+        $headersArr = explode("\r\n", $this->filterResponseHeaders($headers));
 
         // @see https://tools.ietf.org/html/rfc7230#section-3.1.2
         if (0 === \strpos($headersArr[0], \strtoupper('http'))) {
-            list($protocolVersion, $code, $reasonPhrase) = \explode(' ', \substr($headersArr[0], 5));
+            list($protocolVersion, $code, $reasonPhrase) = explode(' ', substr($headersArr[0], 5));
             unset($headersArr[0]);
         }
 
@@ -138,19 +146,19 @@ class Curl implements CurlInterface, HandlerInterface
     private function filterResponseHeaders(string $headers): string
     {
         // cURL automatically decodes chunked-messages
-        $headers = \preg_replace("/Transfer-Encoding:\s*chunked\\r\\n/i", '', $headers);
+        $headers = preg_replace("/Transfer-Encoding:\s*chunked\\r\\n/i", '', $headers);
 
         // cURL automatically handles Proxy rewrites, remove the "HTTP/v.v 200 Connection established" string
-        $headers = \preg_replace(
+        $headers = preg_replace(
             '/HTTP\/\d.\d\s*200\s*Connection\s*established\\r\\n\\r\\n/',
             '',
             $headers
         );
 
         // Eliminate multiple HTTP responses.
-        $headers = \preg_split('/(?:\r?\n){2}/m', \trim($headers, "\r\n"));
+        $headers = preg_split('/(?:\r?\n){2}/m', \trim($headers, "\r\n"));
 
-        return \array_pop($headers);
+        return array_pop($headers);
     }
 
     private function buildOptions(HandlerRequestInterface $request): array
@@ -207,10 +215,11 @@ class Curl implements CurlInterface, HandlerInterface
     private function getAuthorizationOptions(HandlerRequestInterface $request): array
     {
         $options = [];
+        $credentials = $this->credentials ? $this->credentials->__toString() : null;
 
-        if (!empty($this->credentials)) {
+        if ($credentials) {
             $options[\CURLOPT_HTTPAUTH] = \CURLAUTH_BASIC;
-            $options[\CURLOPT_USERPWD] = $this->credentials;
+            $options[\CURLOPT_USERPWD] = $credentials;
         }
 
         return $options;

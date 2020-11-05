@@ -5,8 +5,6 @@ namespace PrintNode;
 use BadMethodCallException;
 use DateTime;
 use InvalidArgumentException;
-use function json_last_error;
-use function json_last_error_msg;
 use RuntimeException;
 
 use function get_object_vars;
@@ -14,6 +12,8 @@ use function get_class;
 use function is_array;
 use function is_object;
 use function json_encode;
+use function json_last_error;
+use function json_last_error_msg;
 use function preg_match;
 use function property_exists;
 use function strtolower;

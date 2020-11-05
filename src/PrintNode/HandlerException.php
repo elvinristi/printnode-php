@@ -10,7 +10,7 @@ class HandlerException extends \Exception
     private $request;
 
     /**
-     * @var \PrintNode\Response
+     * @var \PrintNode\Api\ResponseInterface
      */
     private $response;
 
@@ -20,14 +20,14 @@ class HandlerException extends \Exception
      * @param string                      $message
      * @param int                         $code
      * @param \PrintNode\Api\HandlerRequestInterface|null $request
-     * @param \PrintNode\Response|null      $response
+     * @param \PrintNode\Api\ResponseInterface|null      $response
      * @param \Throwable|null             $previous
      */
     public function __construct(
         string $message = "",
         int $code = 0,
         \PrintNode\Api\HandlerRequestInterface $request = null,
-        \PrintNode\Response $response = null,
+        \PrintNode\Api\ResponseInterface $response = null,
         \Throwable $previous = null
     ) {
         $this->request = $request;
@@ -37,7 +37,7 @@ class HandlerException extends \Exception
     }
 
     /**
-     * @inheritDoc
+     * @return \PrintNode\Api\HandlerRequestInterface|null
      */
     public function getRequest()
     {
@@ -45,7 +45,7 @@ class HandlerException extends \Exception
     }
 
     /**
-     * @inheritDoc
+     * @return \PrintNode\Api\ResponseInterface|null
      */
     public function getResponse()
     {
