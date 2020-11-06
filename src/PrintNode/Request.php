@@ -3,7 +3,7 @@
 namespace PrintNode;
 
 use BadMethodCallException;
-use InvalidArgumentException;
+
 use PrintNode\Api\CredentialsInterface;
 use PrintNode\Api\HandlerInterface;
 use PrintNode\Api\HandlerRequestInterface;
@@ -17,8 +17,10 @@ use PrintNode\Entities\Printer;
 use PrintNode\Entities\PrintJob;
 use PrintNode\Entities\Tag;
 use PrintNode\Entities\Whoami;
+use PrintNode\Exception\HTTPException;
+use PrintNode\Exception\InvalidArgumentException;
+use PrintNode\Exception\RuntimeException;
 use PrintNode\Message\ServerRequest;
-use RuntimeException;
 
 use function array_shift;
 use function count;
@@ -549,18 +551,12 @@ class Request
 
     /**
      * @param ResponseInterface $response
-     * @throws RuntimeException
+     * @throws HTTPException
      */
     private function validateResponse(ResponseInterface $response)
     {
         if ($response->getStatusCode() !== ResponseInterface::CODE_OK) {
-            throw new RuntimeException(
-                sprintf(
-                    'HTTP Error (%d): %s',
-                    $response->getStatusCode(),
-                    $response->getReasonPhrase()
-                )
-            );
+            throw new HTTPException($response->getStatusCode(), $response->getReasonPhrase());
         }
     }
 

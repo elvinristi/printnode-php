@@ -1,6 +1,6 @@
 <?php
 
-namespace PrintNode;
+namespace PrintNode\Exception;
 
 class HandlerException extends \Exception
 {
@@ -17,14 +17,14 @@ class HandlerException extends \Exception
     /**
      * HandlerException constructor.
      *
-     * @param string                      $message
-     * @param int                         $code
+     * @param string                                      $message
+     * @param int                                         $code
      * @param \PrintNode\Api\HandlerRequestInterface|null $request
-     * @param \PrintNode\Api\ResponseInterface|null      $response
-     * @param \Throwable|null             $previous
+     * @param \PrintNode\Api\ResponseInterface|null       $response
+     * @param \Throwable|null                             $previous
      */
     public function __construct(
-        string $message = "",
+        string $message = '',
         int $code = 0,
         \PrintNode\Api\HandlerRequestInterface $request = null,
         \PrintNode\Api\ResponseInterface $response = null,

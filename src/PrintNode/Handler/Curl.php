@@ -7,7 +7,7 @@ use PrintNode\Api\HandlerInterface;
 use PrintNode\Api\HandlerRequestInterface;
 use PrintNode\Api\ResponseInterface;
 use PrintNode\Api\CredentialsInterface;
-use PrintNode\HandlerException;
+use PrintNode\Exception\HandlerException;
 use PrintNode\Response;
 use RuntimeException;
 

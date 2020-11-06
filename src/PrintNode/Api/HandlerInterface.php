@@ -13,7 +13,7 @@ interface HandlerInterface
      * @param \PrintNode\Api\HandlerRequestInterface $request
      *
      * @return \PrintNode\Api\ResponseInterface
-     * @throws \PrintNode\HandlerException
+     * @throws \PrintNode\Exception\HandlerException
      */
     public function run(HandlerRequestInterface $request): ResponseInterface;
 }
