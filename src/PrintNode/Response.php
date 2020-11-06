@@ -125,15 +125,21 @@ class Response extends AbstractMessage implements ResponseInterface
     }
 
     /**
-     * Get Response body decoded into an array
-     *
-     * @param void
-     *
-     * @return mixed
+     * @inheritDoc
      */
     public function getDecodedContent()
     {
         return $this->getBody() ? \json_decode($this->getBody(), true) : null;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function getDecodedAsEntity(string $class)
+    {
+        $content = $this->getBody() ? \json_decode($this->getBody(), false) : new \stdClass();
+
+        return Entity::makeFromResponse($class, $content);
     }
 
     /**
