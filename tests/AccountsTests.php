@@ -50,7 +50,7 @@ class AccountsTests extends PHPUnit_Framework_TestCase
 
 	public function testTags(){
 		$request = new PrintNode\Request($this->credentials);
-		$tag = new PrintNode\Tag();
+		$tag = new PrintNode\Entities\Tag();
 		$tag->name = "atag";
 		$tag->value = "atagvalue";
 		$response = $request->post($tag);

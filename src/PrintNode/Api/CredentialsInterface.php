@@ -1,6 +1,6 @@
 <?php
 
-namespace PrintNode;
+namespace PrintNode\Api;
 
 /**
  * Credentials
@@ -14,7 +14,7 @@ interface CredentialsInterface
      * Constructor
      * @param mixed $username
      * @param mixed $password
-     * @return Credentials
+     * @return \PrintNode\CredentialsInterface
      */
      
     /**

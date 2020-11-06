@@ -1,6 +1,6 @@
 <?php
 
-namespace PrintNode;
+namespace PrintNode\Entities;
 
 /**
  * Account
@@ -11,7 +11,7 @@ namespace PrintNode;
  * @property-read string[] $ApiKeys
  * @property-read string[string] $Tags
  */
-class Account extends Entity
+class Account extends \PrintNode\Entity
 {
     protected $Account;
     protected $ApiKeys;
@@ -19,12 +19,14 @@ class Account extends Entity
 
     public function formatForPatch()
     {
-        return json_encode($this->Account);
+        return $this->dataToJson($this->Account);
     }
 
+    /**
+     * @inheritDoc
+     */
     public function foreignKeyEntityMap()
     {
-        return array(
-        );
+        return [];
     }
 }

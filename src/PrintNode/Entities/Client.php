@@ -1,24 +1,23 @@
 <?php
 
-namespace PrintNode;
+namespace PrintNode\Entities;
 
 /**
  * Client
- *
  * Object representing a Client in PrintNode API
  *
- * @property-read int $id
- * @property-read bool $enabled
- * @property-read string $edition
- * @property-read string $version
- * @property-read string $os
- * @property-read string $filename
- * @property-read string $filesize
- * @property-read string $sha1
+ * @property-read int      $id
+ * @property-read bool     $enabled
+ * @property-read string   $edition
+ * @property-read string   $version
+ * @property-read string   $os
+ * @property-read string   $filename
+ * @property-read string   $filesize
+ * @property-read string   $sha1
  * @property-read DateTime $releaseTimestamp
- * @property-read string $url
+ * @property-read string   $url
  */
-class Client extends Entity
+class Client extends \PrintNode\Entity
 {
     protected $id;
     protected $enabled;
@@ -33,7 +32,7 @@ class Client extends Entity
 
     public function formatForPatch()
     {
-        return json_encode(array("enabled" => $this->enabled));
+        return $this->dataToJson(['enabled' => $this->enabled]);
     }
 
     public function endPointUrlArg()
@@ -43,7 +42,6 @@ class Client extends Entity
 
     public function foreignKeyEntityMap()
     {
-        return array(
-        );
+        return [];
     }
 }

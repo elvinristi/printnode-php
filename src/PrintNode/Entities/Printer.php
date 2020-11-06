@@ -1,6 +1,6 @@
 <?php
 
-namespace PrintNode;
+namespace PrintNode\Entities;
 
 /**
  * Printer
@@ -16,7 +16,7 @@ namespace PrintNode;
  * @property-read DateTime $createTimestamp
  * @property-read string $state
  */
-class Printer extends Entity
+class Printer extends \PrintNode\Entity
 {
     protected $id;
     protected $computer;
@@ -29,8 +29,8 @@ class Printer extends Entity
 
     public function foreignKeyEntityMap()
     {
-        return array(
-            'computer' => 'PrintNode\Computer'
-        );
+        return [
+            'computer' => \PrintNode\Entities\Computer::class
+        ];
     }
 }

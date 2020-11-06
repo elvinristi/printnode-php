@@ -1,25 +1,21 @@
 <?php
 
-namespace PrintNode;
+namespace PrintNode\Entities;
 
 /**
  * Download
- *
  * Object representing a Download Client in PrintNode API
  *
- *
- * @property-read string $edition
- * @property-read string $version
- * @property-read string $os
- * @property-read string $filename
- * @property-read string $filesize
- * @property-read string $sha1
+ * @property-read string   $edition
+ * @property-read string   $version
+ * @property-read string   $os
+ * @property-read string   $filename
+ * @property-read string   $filesize
+ * @property-read string   $sha1
  * @property-read DateTime $releaseTimestamp
- * @property-read string $url
+ * @property-read string   $url
  */
-
-
-class Download extends Entity
+class Download extends \PrintNode\Entity
 {
     protected $edition;
     protected $version;
@@ -32,7 +28,6 @@ class Download extends Entity
 
     public function foreignKeyEntityMap()
     {
-        return array(
-        );
+        return [];
     }
 }

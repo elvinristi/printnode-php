@@ -2,40 +2,91 @@
 
 namespace PrintNode;
 
+use InvalidArgumentException;
+use PrintNode\Api\ResponseInterface;
+use PrintNode\Message\AbstractMessage;
+
+use function preg_grep;
+use function preg_match;
+
 /**
  * Response
- *
  * HTTP response object.
  */
-class Response
+class Response extends AbstractMessage implements ResponseInterface
 {
     /**
-     * Original Request URL
-     * @var string
+     * @var int
      */
-    private $url;
+    private $code;
 
     /**
-     * Response headers
-     * @var mixed[]
-     */
-    private $headers;
-
-    /**
-     * Response body
      * @var string
      */
-    private $content;
+    private $reasonPhrase;
+
+    public function __construct(
+        int $code = self::CODE_OK,
+        string $reasonPhrase = ''
+    ) {
+        $this->checkStatusCode($code);
+        $this->checkReasonPhrase($reasonPhrase);
+
+        $this->code = $code;
+        $this->reasonPhrase = $reasonPhrase;
+    }
+
+    public function getStatusCode(): int
+    {
+        return $this->code;
+    }
+
+    public function getReasonPhrase(): string
+    {
+        return $this->reasonPhrase;
+    }
+
+    /**
+     * Checks code is integer and between expected range
+     *
+     * @param $code
+     *
+     * @return void
+     */
+    private function checkStatusCode($code)
+    {
+        if (false === (is_int($code)
+                || filter_var($code, FILTER_VALIDATE_INT, ['options' => ['min_range' => 100, 'max_range' => 599]])
+            )) {
+            throw new InvalidArgumentException('Code is expected to be int and between 100 and 599');
+        }
+    }
+
+    /**
+     * Checks reason phrase is string type
+     *
+     * @param $reasonPhrase
+     *
+     * @return void
+     */
+    private function checkReasonPhrase($reasonPhrase)
+    {
+        if (false === is_string($reasonPhrase)) {
+            throw new InvalidArgumentException('Reason phrase expected to be type of string');
+        }
+    }
 
     /**
      * Extract the HTTP status code and message
      * from the Response headers
+     *
      * @param void
+     *
      * @return mixed[]
      */
     private function getStatus()
     {
-        if (!($statusArray = preg_grep('/^HTTP\/(1.0|1.1)\s+(\d+)\s+(.+)/', $this->headers))) {
+        if (!($statusArray = preg_grep('/^HTTP\/(1.0|1.1)\s+(\d+)\s+(.+)/', $this->getHeaders()))) {
             throw new \RuntimeException('Could not determine HTTP status from API response');
         }
 
@@ -43,75 +94,63 @@ class Response
             throw new \RuntimeException('Could not determine HTTP status from API response');
         }
 
-        return array(
-            'code' => $matchesArray[2],
+        return [
+            'code' => $this->code,
             'message' => $matchesArray[3],
-        );
-    }
-
-    /**
-     * Constructor
-     * @param mixed $url
-     * @param mixed $content
-     * @param mixed $headers
-     * @return Response
-     */
-    public function __construct($url, $content, array $headers)
-    {
-        $this->url = $url;
-        $this->headers = $headers;
-        $this->content = $content;
+        ];
     }
 
     /**
      * Get Response body
+     *
      * @param void
+     *
      * @return string
      */
     public function getContent()
     {
-        return $this->content;
+        return parent::getBody();
     }
 
     /**
      * Get Response headers
+     *
      * @param void
+     *
      * @return mixed[]
      */
     public function getHeaders()
     {
-        return $this->headers;
+        return \explode("\r\n", parent::getActualHeaders());
     }
 
     /**
-     * Get Response body decoded into an array
-     * @param void
-     * @return mixed
+     * @inheritDoc
      */
     public function getDecodedContent()
     {
-        return json_decode($this->content, true);
+        return $this->getBody() ? \json_decode($this->getBody(), true) : null;
     }
 
     /**
-     * Get HTTP status code
-     * @param void
-     * @return string
+     * @inheritDoc
      */
-    public function getStatusCode()
+    public function getDecodedAsEntity(string $class)
     {
-        $status = $this->getStatus();
-        return $status['code'];
+        $content = $this->getBody() ? \json_decode($this->getBody(), false) : new \stdClass();
+
+        return Entity::makeFromResponse($class, $content);
     }
 
     /**
      * Get HTTP status code
+     *
      * @param void
+     *
      * @return string
      */
     public function getStatusMessage()
     {
-        $status = $this->getStatus();
-        return $status['message'];
+        return $this->getStatus()['message'] ?? null;
     }
 }
