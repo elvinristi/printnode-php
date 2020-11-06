@@ -4,7 +4,8 @@
     "require": {
         "php": ">=7.0.0",
         "ext-curl": "*",
-        "ext-json": "*"
+        "ext-json": "*",
+        "ext-mbstring": "*"
     },
     "keywords": [
         "php",

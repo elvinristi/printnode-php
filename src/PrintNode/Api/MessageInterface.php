@@ -4,6 +4,8 @@ namespace PrintNode\Api;
 
 interface MessageInterface
 {
+    const HEADER_AUTHORIZATION = 'Authorization';
+
     /**
      * Sets actual headers which have been sent/received by handler.
      *

@@ -135,11 +135,11 @@ class Response extends AbstractMessage implements ResponseInterface
     /**
      * @inheritDoc
      */
-    public function getDecodedAsEntity(string $class)
+    public function getDecodedAsEntity(Request $client, string $class)
     {
         $content = $this->getBody() ? \json_decode($this->getBody(), false) : new \stdClass();
 
-        return Entity::makeFromResponse($class, $content);
+        return Entity::makeFromResponse($client, $class, $content);
     }
 
     /**

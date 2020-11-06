@@ -23,8 +23,22 @@ use function substr;
  * Entity
  * Base class for entity objects.
  */
-abstract class Entity implements EntityInterface
+abstract class Entity implements EntityInterface, \JsonSerializable
 {
+    /**
+     * Reference to the client
+     * @var \PrintNode\Request
+     */
+    protected $client;
+
+    /**
+     * @param \PrintNode\Request $parentClient
+     */
+    public function __construct(\PrintNode\Request $parentClient)
+    {
+        $this->client = $parentClient;
+    }
+
     /**
      * Recursively cast an object into an array.
      *
@@ -50,15 +64,16 @@ abstract class Entity implements EntityInterface
     /**
      * Map array of data to an entity
      *
+     * @param Request $client
      * @param mixed $entityName
      * @param mixed $data
      *
      * @return Entity
      * @throws \Exception
      */
-    private static function mapDataToEntity($entityName, \stdClass $data)
+    private static function mapDataToEntity(Request $client, $entityName, \stdClass $data)
     {
-        $entity = new $entityName();
+        $entity = new $entityName($client);
 
         if (!($entity instanceof Entity)) {
             throw new RuntimeException(
@@ -84,6 +99,7 @@ abstract class Entity implements EntityInterface
 
             if (isset($foreignKeyEntityMap[$propertyName])) {
                 $entity->$propertyName = self::mapDataToEntity(
+                    $client,
                     $foreignKeyEntityMap[$propertyName],
                     $data->$propertyName
                 );
@@ -96,6 +112,32 @@ abstract class Entity implements EntityInterface
         }
 
         return $entity;
+    }
+
+    /**
+     * Make an array of specified entity from a Response
+     *
+     * @param Request      $client
+     * @param string       $entityName
+     * @param string|array|\stdClass $content
+     *
+     * @return string|Entity|Entity[]
+     * @throws \Exception
+     */
+    public static function makeFromResponse(Request $client, $entityName, $content)
+    {
+        $output = [];
+        if (is_array($content)) {
+            foreach ($content as $entityData) {
+                $output[] = self::makeFromResponse($client, $entityName, $entityData);
+            }
+        } elseif (is_object($content)) {
+            $output = self::mapDataToEntity($client, $entityName, $content);
+        } else {
+            $output = $content;
+        }
+
+        return $output;
     }
 
     /**
@@ -120,6 +162,11 @@ abstract class Entity implements EntityInterface
     public function __toString()
     {
         return (string)$this->dataToJson($this->toArray());
+    }
+
+    public function jsonSerialize()
+    {
+        return $this->toArray();
     }
 
     public function dataToJson($data)
@@ -152,6 +199,7 @@ abstract class Entity implements EntityInterface
                 )
             );
         }
+
         $this->$propertyName = $value;
     }
 
@@ -221,27 +269,10 @@ abstract class Entity implements EntityInterface
     }
 
     /**
-     * Make an array of specified entity from a Response
-     *
-     * @param string       $entityName
-     * @param string|array|\stdClass $content
-     *
-     * @return string|Entity|Entity[]
-     * @throws \Exception
+     * @inheritDoc
      */
-    public static function makeFromResponse($entityName, $content)
+    public function foreignKeyEntityMap()
     {
-        $output = [];
-        if (is_array($content)) {
-            foreach ($content as $entityData) {
-                $output[] = self::makeFromResponse($entityName, $entityData);
-            }
-        } elseif (is_object($content)) {
-            $output = self::mapDataToEntity($entityName, $content);
-        } else {
-            $output = $content;
-        }
-
-        return $output;
+        return [];
     }
 }

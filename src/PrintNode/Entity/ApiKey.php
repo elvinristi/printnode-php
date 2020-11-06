@@ -1,6 +1,6 @@
 <?php
 
-namespace PrintNode\Entities;
+namespace PrintNode\Entity;
 
 /**
  * ApiKey

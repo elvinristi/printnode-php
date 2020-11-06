@@ -710,10 +710,10 @@ interface ResponseInterface extends MessageInterface
     public function getDecodedContent();
 
     /**
-     * @param string $class
+     * @param \PrintNode\Request $client
+     * @param string                 $class
      *
      * @return \PrintNode\Entity|\PrintNode\Entity[]|string
-     * @throws \Exception
      */
-    public function getDecodedAsEntity(string $class);
+    public function getDecodedAsEntity(\PrintNode\Request $client, string $class);
 }
