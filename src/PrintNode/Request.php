@@ -27,7 +27,6 @@ use function get_class;
 use function gettype;
 use function http_build_query;
 use function is_string;
-use function json_decode;
 use function method_exists;
 use function max;
 use function min;
@@ -114,11 +113,6 @@ class Request
     ];
 
     /**
-     * @var string[]
-     */
-    private $endPointFullUrls = [];
-
-    /**
      * @var string
      */
     private $handlerClassname = \PrintNode\Handler\Curl::class;
@@ -154,7 +148,6 @@ class Request
             $this->methodNameEntityMap = $methodNameEntityMap;
         }
 
-        $this->makeEndPointUrls();
         $this->setOffset($offset);
         $this->setLimit($limit);
     }
@@ -169,6 +162,7 @@ class Request
         if (!is_numeric($offset)) {
             throw new InvalidArgumentException('offset should be a number');
         }
+
         $this->offset = $offset;
     }
 
@@ -182,6 +176,7 @@ class Request
         if (!is_numeric($limit)) {
             throw new InvalidArgumentException('limit should be a number');
         }
+
         $this->limit = $limit;
     }
 
@@ -213,15 +208,15 @@ class Request
     /**
      * Delete an ApiKey for a child account
      *
-     * @param string $apikey
+     * @param string $apiKey
      *
      * @return ResponseInterface
      * */
-    public function deleteApiKey(string $apikey): ResponseInterface
+    public function deleteApiKey(string $apiKey): ResponseInterface
     {
-        $endPointUrl = "{$this->apiUrl}/account/apikey/{$apikey}";
+        $endPointUrl = $this->getEndPointUrl(ApiKey::class);
 
-        return $this->callDelete($endPointUrl);
+        return $this->callDelete("{$endPointUrl}/{$apiKey}");
     }
 
     /**
@@ -233,9 +228,9 @@ class Request
      * */
     public function deleteTag(string $tag): ResponseInterface
     {
-        $endPointUrl = "{$this->apiUrl}/account/tag/{$tag}";
+        $endPointUrl = $this->getEndPointUrl(Tag::class);
 
-        return $this->callDelete($endPointUrl);
+        return $this->callDelete("{$endPointUrl}/{$tag}");
     }
 
     /**
@@ -246,7 +241,7 @@ class Request
      */
     public function deleteAccount(): ResponseInterface
     {
-        $endPointUrl = "{$this->apiUrl}/account/";
+        $endPointUrl = $this->getEndPointUrl(Account::class);
 
         return $this->callDelete($endPointUrl);
     }
@@ -262,7 +257,7 @@ class Request
      * */
     public function getClientKey(string $uuid, string $edition, string  $version): ResponseInterface
     {
-        $endPointUrl = "{$this->apiUrl}/client/key/{$uuid}?edition={$edition}&version={$version}";
+        $endPointUrl = "/client/key/{$uuid}?edition={$edition}&version={$version}";
 
         return $this->callGet($endPointUrl);
     }
@@ -284,20 +279,19 @@ class Request
                 )
             );
         }
-
-        $endPointUrl = "{$this->apiUrl}/printjobs/";
+        $endPointUrl = $this->getEndPointUrl(PrintJob::class);
 
         if (count($arguments) === 0) {
-            $endPointUrl .= 'states/';
+            $endPointUrl .= '/states/';
         } else {
             $printJobId = array_shift($arguments);
-            $endPointUrl .= $printJobId . '/states/';
+            $endPointUrl .= "/{$printJobId}/states/";
         }
 
         $response = $this->callGet($endPointUrl);
         $this->validateResponse($response);
 
-        return $this->responseToEntity($response, \PrintNode\Entities\State::class);
+        return $response->getDecodedAsEntity(\PrintNode\Entities\State::class);
     }
 
     /**
@@ -319,13 +313,14 @@ class Request
             );
         }
 
-        $endPointUrl = "{$this->apiUrl}/printers/{$printerIdSet}/printjobs/";
+        $endPointUrl = $this->getEndPointUrl(Printer::class);
+        $endPointUrl .= "/{$printerIdSet}/printjobs/";
         $endPointUrl .= implode('', $args);
 
         $response = $this->callGet($endPointUrl);
         $this->validateResponse($response);
 
-        return $this->responseToEntity($response, \PrintNode\Entities\PrintJob::class);
+        return $response->getDecodedAsEntity(\PrintNode\Entities\PrintJob::class);
     }
 
     /**
@@ -338,11 +333,13 @@ class Request
      */
     public function getScales($computerId)
     {
-        $endPointUrl = "{$this->apiUrl}/computer/{$computerId}/scales";
+        $endPointUrl = $this->getEndPointUrl(Computer::class);
+        $endPointUrl .= "/{$computerId}/scales";
+
         $response = $this->callGet($endPointUrl);
         $this->validateResponse($response);
 
-        return $this->responseToEntity($response, \PrintNode\Entities\Scale::class);
+        return $response->getDecodedAsEntity(\PrintNode\Entities\Scale::class);
     }
 
     /**
@@ -364,13 +361,15 @@ class Request
             );
         }
 
-        $endPointUrl = "{$this->apiUrl}/computers/{$computerIdSet}/printers/";
+        $endPointUrl = $this->getEndPointUrl(Computer::class);
+
+        $endPointUrl .= "/{$computerIdSet}/printers/";
         $endPointUrl .= implode('', $args);
 
         $response = $this->callGet($endPointUrl);
         $this->validateResponse($response);
 
-        return $this->responseToEntity($response, \PrintNode\Entities\Printer::class);
+        return $response->getDecodedAsEntity(\PrintNode\Entities\Printer::class);
     }
 
     /**
@@ -404,13 +403,17 @@ class Request
      * @param array  $args
      *
      * @return ResponseInterface
+     * @throws \PrintNode\HandlerException
      */
     public function put(Entity $entity, ...$args): ResponseInterface
     {
         $endPointUrl = $this->getEndPointUrl(get_class($entity));
         $endPointUrl .= implode('/', $args);
 
-        $request = $this->createRequest($endPointUrl, HandlerRequestInterface::METHOD_PUT);
+        $request = $this->createRequest(
+            $this->wrapWithApiUrl($endPointUrl),
+            HandlerRequestInterface::METHOD_PUT
+        );
         $request->setBody($entity->__toString());
 
         return $this->getHandler()->run($request);
@@ -469,7 +472,7 @@ class Request
         $response = $this->callGet($endPointUrl);
         $this->validateResponse($response);
 
-        return $this->responseToEntity($response, $entityName);
+        return $response->getDecodedAsEntity($entityName);
     }
 
     private function createRequest(string $apiUrl, string $method = null): HandlerRequestInterface
@@ -477,10 +480,15 @@ class Request
         return new ServerRequest($apiUrl, $method);
     }
 
+    private function wrapWithApiUrl(string $requestUri): string
+    {
+        return $this->apiUrl . $requestUri;
+    }
+
     private function callGet($endPointUrl): ResponseInterface
     {
         $request = $this->createRequest(
-            $this->applyOffsetLimit($endPointUrl)
+            $this->applyOffsetLimit($this->wrapWithApiUrl($endPointUrl))
         );
 
         return $this->getHandler()->run($request);
@@ -497,7 +505,7 @@ class Request
         }
 
         $request = $this->createRequest(
-            $endPointUrl,
+            $this->wrapWithApiUrl($endPointUrl),
             HandlerRequestInterface::METHOD_DELETE
         );
 
@@ -541,18 +549,6 @@ class Request
 
     /**
      * @param ResponseInterface $response
-     * @param string              $class
-     *
-     * @return \PrintNode\Entity[]
-     * @throws \Exception
-     */
-    private function responseToEntity(ResponseInterface $response, string $class)
-    {
-        return Entity::makeFromResponse($class, json_decode($response->getBody(), false));
-    }
-
-    /**
-     * @param ResponseInterface $response
      * @throws RuntimeException
      */
     private function validateResponse(ResponseInterface $response)
@@ -582,28 +578,13 @@ class Request
     }
 
     /**
-     * Assign API EndPoint URL from an entity name
-     *
-     */
-    private function makeEndPointUrls()
-    {
-        $endPointFullUrls = [];
-
-        foreach ($this->methodNameEntityMap as $classes) {
-            $endPointFullUrls[$classes] = $this->apiUrl . $this->endPointUrls[$classes];
-        }
-
-        $this->endPointFullUrls = $endPointFullUrls;
-    }
-
-    /**
      * @param string $entityName
      *
      * @return string
      */
     private function getEndPointUrl(string $entityName): string
     {
-        if (!isset($this->endPointFullUrls[$entityName])) {
+        if (!isset($this->endPointUrls[$entityName])) {
             throw new InvalidArgumentException(
                 sprintf(
                     'Missing endPointUrl for entityName "%s"',
@@ -612,7 +593,7 @@ class Request
             );
         }
 
-        return $this->endPointFullUrls[$entityName];
+        return $this->endPointUrls[$entityName];
     }
 
     /**
@@ -633,7 +614,10 @@ class Request
                 )
             );
         }
-        if (!isset($this->methodNameEntityMap[$matchesArray[1]])) {
+
+        $entityClass = $this->methodNameEntityMap[$matchesArray[1]] ?? null;
+
+        if (!$entityClass) {
             throw new BadMethodCallException(
                 sprintf(
                     '%s is missing an methodNameMap entry for %s',
@@ -643,17 +627,17 @@ class Request
             );
         }
 
-        return $this->methodNameEntityMap[$matchesArray[1]];
+        return $entityClass;
     }
 
     /**
      * Apply offset and limit to a end point URL.
      *
-     * @param mixed $endPointUrl
+     * @param string $endPointUrl
      *
      * @return string
      */
-    private function applyOffsetLimit($endPointUrl)
+    private function applyOffsetLimit(string $endPointUrl): string
     {
         $endPointUrlArray = parse_url($endPointUrl);
 
@@ -667,12 +651,18 @@ class Request
         $queryStringArray['limit'] = min(max(1, $this->limit), 500);
         $endPointUrlArray['query'] = http_build_query($queryStringArray, null, '&');
 
-        $endPointUrl = (isset($endPointUrlArray['scheme'])) ? $endPointUrlArray['scheme'] . "://" : '';
-        $endPointUrl .= (isset($endPointUrlArray['host'])) ? (string)($endPointUrlArray['host']) : '';
-        $endPointUrl .= (isset($endPointUrlArray['port'])) ? ":{$endPointUrlArray['port']}" : '';
-        $endPointUrl .= (isset($endPointUrlArray['path'])) ? (string)($endPointUrlArray['path']) : '';
-        $endPointUrl .= (isset($endPointUrlArray['query'])) ? "?{$endPointUrlArray['query']}" : '';
+        return $this->buildUrl($endPointUrlArray);
+    }
 
-        return $endPointUrl;
+    private function buildUrl(array $parts): string
+    {
+        $url = (isset($parts['scheme'])) ? $parts['scheme'] . '://' : '';
+        $url .= (isset($parts['host'])) ? (string)($parts['host']) : '';
+
+        $url .= (isset($parts['port']) ? ':' . $parts['port'] : '');
+        $url .= ($parts['path'] ?? '');
+        $url .= (isset($parts['query']) ? '?' . $parts['query'] : '');
+
+        return $url;
     }
 }

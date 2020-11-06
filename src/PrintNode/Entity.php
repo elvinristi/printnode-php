@@ -184,7 +184,7 @@ abstract class Entity implements EntityInterface
      * @param mixed $name
      * @param mixed $arguments
      *
-     * @return mixed
+     * @return mixed|void
      */
     public function __call($name, $arguments)
     {
@@ -197,8 +197,10 @@ abstract class Entity implements EntityInterface
                 )
             );
         }
+
         $propertyName = $matchesArray[2];
         $propertyName = strtolower(substr($propertyName, 0, 1)) . substr($propertyName, 1);
+
         if (!property_exists($this, $propertyName)) {
             throw new BadMethodCallException(
                 sprintf(
@@ -208,6 +210,7 @@ abstract class Entity implements EntityInterface
                 )
             );
         }
+
         switch ($matchesArray[1]) {
             case 'set':
                 $this->$propertyName = $arguments[0];
@@ -221,9 +224,9 @@ abstract class Entity implements EntityInterface
      * Make an array of specified entity from a Response
      *
      * @param string       $entityName
-     * @param string|array $content
+     * @param string|array|\stdClass $content
      *
-     * @return Entity[]
+     * @return string|Entity|Entity[]
      * @throws \Exception
      */
     public static function makeFromResponse($entityName, $content)
