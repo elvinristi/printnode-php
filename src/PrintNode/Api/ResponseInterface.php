@@ -701,4 +701,19 @@ interface ResponseInterface extends MessageInterface
      * @return string
      */
     public function getReasonPhrase(): string;
+
+    /**
+     * Get Response body decoded into an array
+     *
+     * @return mixed
+     */
+    public function getDecodedContent();
+
+    /**
+     * @param string $class
+     *
+     * @return \PrintNode\Entity|\PrintNode\Entity[]|string
+     * @throws \Exception
+     */
+    public function getDecodedAsEntity(string $class);
 }
