@@ -2,7 +2,7 @@
 
 namespace PrintNode\Credentials;
 
-class ApiKey extends \PrintNode\Credentials
+class ApiKey extends \PrintNode\Credentials implements \PrintNode\Api\CredentialsInterface
 {
     /**
      * @param string $apiKey API Key to be used for authentication
@@ -16,5 +16,13 @@ class ApiKey extends \PrintNode\Credentials
         }
         
         $this->apiKey = $apiKey;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function __toString()
+    {
+        return (string)$this->apiKey;
     }
 }

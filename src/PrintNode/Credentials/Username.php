@@ -2,9 +2,8 @@
 
 namespace PrintNode\Credentials;
 
-class Username extends \PrintNode\Credentials
+class Username extends \PrintNode\Credentials implements \PrintNode\Api\CredentialsInterface
 {
-
     /**
      * Class constuctor
      * @param string $username Username to be used for authentication
@@ -27,5 +26,13 @@ class Username extends \PrintNode\Credentials
         
         $this->username = $username;
         $this->password = $password;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function __toString()
+    {
+        return (string)\implode(':', [$this->username, $this->password]);
     }
 }
