@@ -866,7 +866,6 @@ class Request
     {
         if ($this->handler === null) {
             $this->handler = new $this->handlerClassname($this);
-            $this->handler->setCredentials($this->credentials);
         }
 
         return $this->handler;

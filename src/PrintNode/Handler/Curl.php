@@ -37,19 +37,9 @@ class Curl implements CurlInterface, HandlerInterface
      */
     private $timeout = 5;
 
-    /**
-     * @var CredentialsInterface
-     */
-    private $credentials;
-
     public function __construct(\PrintNode\Request $requestContext)
     {
         $this->requestContext = $requestContext;
-    }
-
-    public function setCredentials(CredentialsInterface $credentials = null)
-    {
-        $this->credentials = $credentials;
     }
 
     public function setTimeout(int $timeout)
