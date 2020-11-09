@@ -9,4 +9,4 @@
 
 require_once('Autoloader.php');
 
-\spl_autoload_register('\PrintNode\Autoloader::autoload');
+\spl_autoload_register('\PrintNode\Autoloader::autoload', true, true);

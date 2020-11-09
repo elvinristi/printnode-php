@@ -791,9 +791,7 @@ class Request
 
     private function callGet($endPointUrl): ResponseInterface
     {
-        $request = $this->createRequest(
-            $this->applyOffsetLimit($this->wrapWithApiUrl($endPointUrl))
-        );
+        $request = $this->createRequest($this->wrapWithApiUrl($endPointUrl));
 
         return $this->getHandler()->run($request);
     }
@@ -925,6 +923,7 @@ class Request
     }
 
     /**
+     * @deprecated
      * Apply offset and limit to a end point URL.
      *
      * @param string $endPointUrl

@@ -145,11 +145,13 @@ class Curl implements CurlInterface, HandlerInterface
         /** @noinspection CurlSslServerSpoofingInspection */
         $options = [
             $this->getMethodOption($request->getMethod()) => $request->getMethod(),
+            /*
             \CURLOPT_ENCODING => 'gzip,deflate',
             \CURLOPT_RETURNTRANSFER => true,
             \CURLOPT_VERBOSE => false,
             \CURLOPT_FOLLOWLOCATION => true,
             \CURLOPT_HEADER => true,
+            */
             \CURLOPT_SSL_VERIFYPEER => false,
             // CURLOPT_SSL_VERIFYHOST option 2 is to check the existence of a common name and also verify that it matches
             // the hostname provided.
@@ -157,8 +159,7 @@ class Curl implements CurlInterface, HandlerInterface
             // Support for value 1 removed in cURL 7.28.1.
             \CURLOPT_SSL_VERIFYHOST => 2,
             \CURLOPT_TIMEOUT => max($this->timeout, 30),
-            $this->getAuthorizationOptions($request)
-        ];
+        ] + $this->getAuthorizationOptions($request);
 
         $headers = [];
 
@@ -202,7 +203,7 @@ class Curl implements CurlInterface, HandlerInterface
         if ($authHeader
             && 0 === \strpos($authHeader, 'Basic')
         ) {
-            $authorizationHeader = \explode(' ', $authHeader, 1);
+            $authorizationHeader = \explode(' ', $authHeader);
             $usernamePassword = $authorizationHeader[1] ?? '';
 
             if ($usernamePassword
