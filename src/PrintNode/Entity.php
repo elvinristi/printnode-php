@@ -23,7 +23,7 @@ use function substr;
  * Entity
  * Base class for entity objects.
  */
-abstract class Entity implements EntityInterface, \JsonSerializable
+abstract class Entity extends \StdClass implements EntityInterface, \JsonSerializable
 {
     /**
      * Reference to the client
@@ -37,6 +37,21 @@ abstract class Entity implements EntityInterface, \JsonSerializable
     public function __construct(\PrintNode\Request $parentClient)
     {
         $this->client = $parentClient;
+    }
+
+    /**
+     * Maps a json object to this entity
+     *
+     * @param array $json The JSON to map to this entity
+     * @return bool
+     */
+    public function mapValuesFromJson($json)
+    {
+        foreach ($json as $key => $value) {
+            $this->$key = $value;
+        }
+
+        return true;
     }
 
     /**
@@ -86,28 +101,22 @@ abstract class Entity implements EntityInterface, \JsonSerializable
         $foreignKeyEntityMap = $entity->foreignKeyEntityMap();
         $properties = array_keys(get_object_vars($data));
 
-        foreach ($properties as $propertyName) {
-            if (!property_exists($entity, $propertyName)) {
-                throw new \UnexpectedValueException(
-                    sprintf(
-                        'Property %s->%s does not exist',
-                        get_class($entity),
-                        $propertyName
-                    )
-                );
-            }
+        $entity->mapValuesFromJson($data);
 
+        foreach ($properties as $propertyName) {
             if (isset($foreignKeyEntityMap[$propertyName])) {
                 $entity->$propertyName = self::mapDataToEntity(
                     $client,
                     $foreignKeyEntityMap[$propertyName],
                     $data->$propertyName
                 );
+            /*
             } elseif (is_string($data->$propertyName) &&
                 preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/', $data->$propertyName)) {
                 $entity->$propertyName = new DateTime($data->$propertyName);
             } else {
                 $entity->$propertyName = json_decode(json_encode($data->$propertyName), true);
+            */
             }
         }
 

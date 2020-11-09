@@ -51,17 +51,4 @@ class Account extends Entity
      * @var string
      */
     public $creatorRef;
-
-    /**
-     * Response map for converting this entity back and forth from JSON objects
-     * @var array
-     */
-    public static $responseMap = [
-        'id' => null,
-        'firstname' => null,
-        'lastname' => null,
-        'email' => null,
-        'password' => null,
-        'creatorRef' => null,
-    ];
 }

@@ -27,9 +27,10 @@ class PrinterCapabilities extends Entity
     
     protected $bins;
     protected $collate;
-    protected $copies;
     protected $color;
+    protected $copies;
     protected $dpis;
+    protected $duplex;
     protected $extent;
     protected $medias;
     protected $nup;
