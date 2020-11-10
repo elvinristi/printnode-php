@@ -210,4 +210,16 @@ class PrintJob extends \PrintNode\Entity
             'printer' => \PrintNode\Entity\Printer::class
         ];
     }
+
+    public function jsonSerialize()
+    {
+        $result = [];
+        $arr = $this->toArray();
+
+        $result = array_filter($arr, function ($value, $key) {
+            return $value !== null;
+        }, \ARRAY_FILTER_USE_BOTH);
+
+        return $result;
+    }
 }
