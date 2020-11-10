@@ -840,7 +840,7 @@ class Request
         }
 
 
-        $request = $this->createRequest($endPointUrl, $method);
+        $request = $this->createRequest($this->wrapWithApiUrl($endPointUrl), $method);
         $request->setBody(!$postData ? json_encode($entity) : $postData);
 
         return $this->getHandler()->run($request);
