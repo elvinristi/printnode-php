@@ -2,16 +2,10 @@
 
 namespace PrintNode;
 
+use function get_object_vars;
+
 abstract class EntityDynamic extends Entity
 {
-    /**
-     * Reference to the client
-     * @var Client
-     */
-    protected static $protectedProperties = array(
-        'client' => true,
-    );
-    
     /**
      * Set property on entity
      * @param mixed $propertyName
@@ -53,13 +47,11 @@ abstract class EntityDynamic extends Entity
         $properties = get_object_vars($this);
 
         foreach ($properties as $property => $value) {
-            
             if (isset(self::$protectedProperties[$property])) {
                 continue;
             }
             
             $json[$property] = $value;
-            
         }
         
         return $json;

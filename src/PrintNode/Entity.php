@@ -26,6 +26,13 @@ use function substr;
 abstract class Entity extends \StdClass implements EntityInterface, \JsonSerializable
 {
     /**
+     * @var array
+     */
+    protected static $protectedProperties = [
+        'client' => true,
+    ];
+
+    /**
      * Reference to the client
      * @var \PrintNode\Request
      */
@@ -63,17 +70,27 @@ abstract class Entity extends \StdClass implements EntityInterface, \JsonSeriali
      */
     private static function toArrayRecursive($object)
     {
-        $output = get_object_vars($object);
+        $properties = get_object_vars($object);
 
-        foreach ($output as $key => $value) {
+        foreach ($properties as $property => $value) {
+            if (isset(self::$protectedProperties[$property])) {
+                continue;
+            }
+
             if ($value instanceof DateTime) {
-                $output[$key] = $value->format('c');
+                $properties[$property] = $value->format('c');
             } elseif (is_object($value)) {
-                $output[$key] = static::toArrayRecursive($value);
+                $properties[$property] = static::toArrayRecursive(clone $value);
             }
         }
 
-        return $output;
+        if (!empty(self::$protectedProperties)) {
+            foreach (\array_keys(self::$protectedProperties) as $property) {
+                unset($properties[$property]);
+            }
+        }
+
+        return $properties;
     }
 
     /**
@@ -199,6 +216,10 @@ abstract class Entity extends \StdClass implements EntityInterface, \JsonSeriali
      */
     public function __set($propertyName, $value)
     {
+        if (isset(self::$protectedProperties[$propertyName])) {
+            throw new \PrintNode\Exception\InvalidArgumentException($propertyName . ' is a protected property.');
+        }
+
         if (!property_exists($this, $propertyName)) {
             throw new InvalidArgumentException(
                 sprintf(
