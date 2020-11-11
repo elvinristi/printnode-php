@@ -2,10 +2,7 @@
 
 namespace PrintNode;
 
-use function array_merge;
 use BadMethodCallException;
-use function base64_encode;
-use function is_numeric;
 use PrintNode\Api\CredentialsInterface;
 use PrintNode\Api\HandlerInterface;
 use PrintNode\Api\HandlerRequestInterface;
@@ -26,11 +23,14 @@ use PrintNode\Exception\InvalidArgumentException;
 use PrintNode\Exception\RuntimeException;
 use PrintNode\Message\ServerRequest;
 
+use function array_merge;
 use function array_shift;
+use function base64_encode;
 use function count;
 use function get_class;
 use function gettype;
 use function http_build_query;
+use function is_numeric;
 use function is_string;
 use function method_exists;
 use function max;
@@ -167,6 +167,21 @@ class Request
 
         $this->setOffset($offset);
         $this->setLimit($limit);
+    }
+
+    /**
+     * @param string $uri
+     * @throws InvalidArgumentException
+     */
+    public function setApiUri(string $uri)
+    {
+        $uriComponents = \parse_url($uri);
+
+        if (empty($parts['scheme']) || empty($parts['host'])) {
+            throw new InvalidArgumentException('Invalid API uri provided. Uri must have scheme and host.')
+        }
+
+        $this->apiUrl = $uri;
     }
 
     /**
