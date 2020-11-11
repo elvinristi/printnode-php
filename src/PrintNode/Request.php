@@ -177,8 +177,8 @@ class Request
     {
         $uriComponents = \parse_url($uri);
 
-        if (empty($parts['scheme']) || empty($parts['host'])) {
-            throw new InvalidArgumentException('Invalid API uri provided. Uri must have scheme and host.')
+        if (empty($uriComponents['scheme']) || empty($uriComponents['host'])) {
+            throw new InvalidArgumentException('Invalid API uri provided. Uri must have scheme and host.');
         }
 
         $this->apiUrl = $uri;

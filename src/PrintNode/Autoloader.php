@@ -31,7 +31,7 @@ abstract class Autoloader
         $file.= str_replace('\\', DIRECTORY_SEPARATOR, mb_substr($class, ($nsLen+1))) . '.php';
         
         if (file_exists($file)) {
-            require $file;
+            return require_once $file;
         }
         
     }
