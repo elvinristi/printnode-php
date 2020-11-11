@@ -321,7 +321,7 @@ class Request
      * @param \PrintNode\Entity\PrintJob $printJob     A populated printjob object
      * @param bool                       $returnObject (Optional) If set to true, returns the full printjob data by making a second request
      *
-     * @return \PrintNode\Api\ResponseInterface|\PrintNode\Entity\PrintJob|Entity[]
+     * @return \PrintNode\Api\ResponseInterface|\PrintNode\Entity\PrintJob|Entity
      * @throws \PrintNode\Exception\HTTPException
      */
     public function createPrintJob(PrintJob $printJob, bool $returnObject = false)
@@ -333,7 +333,10 @@ class Request
         }
 
         if ($returnObject) {
-            return $this->viewPrintJobs(0, 1, $response->getBody());
+            $printJobId = trim($response->getBody());
+            $jobs = $this->viewPrintJobs(0, 1, $printJobId);
+
+            return $jobs[0] ?? null;
         }
 
         return $response;
