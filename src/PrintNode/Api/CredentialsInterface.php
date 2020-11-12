@@ -23,19 +23,4 @@ interface CredentialsInterface
      * @return string
      */
     public function __toString();
-    
-    /**
-     * Set property on object
-     * @param mixed $propertyName
-     * @param mixed $value
-     * @return void
-     */
-    public function __set($propertyName, $value);
-    
-    /**
-     * Get property from object
-     * @param mixed $propertyName
-     * @return mixed
-     */
-    public function __get($propertyName);
 }

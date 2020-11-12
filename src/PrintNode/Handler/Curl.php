@@ -5,6 +5,7 @@ namespace PrintNode\Handler;
 use PrintNode\Api\CurlInterface;
 use PrintNode\Api\HandlerInterface;
 use PrintNode\Api\HandlerRequestInterface;
+use PrintNode\Api\MessageInterface;
 use PrintNode\Api\ResponseInterface;
 use PrintNode\Api\CredentialsInterface;
 use PrintNode\Exception\HandlerException;
@@ -27,45 +28,23 @@ use function substr;
 class Curl implements CurlInterface, HandlerInterface
 {
     /**
-     * Custom headers
-     *
-     * @var array
+     * @var \PrintNode\Request
      */
-    private $headers = [];
-
-    /**
-     * @var array
-     */
-    private $childAuth = [];
+    private $requestContext;
 
     /**
      * @var int
      */
     private $timeout = 5;
 
-    /**
-     * @var CredentialsInterface
-     */
-    private $credentials;
-
-    public function setHeaders(array $headers)
+    public function __construct(\PrintNode\Request $requestContext)
     {
-        $this->headers = $headers;
-    }
-
-    public function setCredentials(CredentialsInterface $credentials = null)
-    {
-        $this->credentials = $credentials;
+        $this->requestContext = $requestContext;
     }
 
     public function setTimeout(int $timeout)
     {
         $this->timeout = $timeout;
-    }
-
-    public function setChildAuth(array $childAuthHeader)
-    {
-        $this->childAuth = $childAuthHeader;
     }
 
     /**
@@ -166,22 +145,27 @@ class Curl implements CurlInterface, HandlerInterface
         /** @noinspection CurlSslServerSpoofingInspection */
         $options = [
             $this->getMethodOption($request->getMethod()) => $request->getMethod(),
+            /*
             \CURLOPT_ENCODING => 'gzip,deflate',
             \CURLOPT_RETURNTRANSFER => true,
             \CURLOPT_VERBOSE => false,
             \CURLOPT_FOLLOWLOCATION => true,
             \CURLOPT_HEADER => true,
+            */
             \CURLOPT_SSL_VERIFYPEER => false,
             // CURLOPT_SSL_VERIFYHOST option 2 is to check the existence of a common name and also verify that it matches
             // the hostname provided.
             // 0 to not check the names.
             // Support for value 1 removed in cURL 7.28.1.
             \CURLOPT_SSL_VERIFYHOST => 2,
-            \CURLOPT_TIMEOUT => max($this->timeout, 5),
-            $this->getAuthorizationOptions($request)
-        ];
+            \CURLOPT_TIMEOUT => max($this->timeout, 30),
+        ] + $this->getAuthorizationOptions($request);
 
         $headers = [];
+
+        if ($childAccountHeaders = $this->requestContext->getChildAccountHeaders()) {
+            $headers = array_merge($headers, $childAccountHeaders);
+        }
 
         if (\in_array($request->getMethod(), [
             HandlerRequestInterface::METHOD_POST,
@@ -198,8 +182,7 @@ class Curl implements CurlInterface, HandlerInterface
 
         $options[\CURLOPT_HTTPHEADER] = array_merge(
             $headers,
-            $this->childAuth,
-            $this->headers
+            $this->requestContext->getAdditionalHeaders()
         );
 
         return $options;
@@ -215,11 +198,22 @@ class Curl implements CurlInterface, HandlerInterface
     private function getAuthorizationOptions(HandlerRequestInterface $request): array
     {
         $options = [];
-        $credentials = $this->credentials ? $this->credentials->__toString() : null;
+        $authHeader = $this->requestContext->getAuthHeader();
 
-        if ($credentials) {
+        if ($authHeader
+            && 0 === \strpos($authHeader, 'Basic')
+        ) {
+            $authorizationHeader = \explode(' ', $authHeader);
+            $usernamePassword = $authorizationHeader[1] ?? '';
+
+            if ($usernamePassword
+                && false === \strpos($usernamePassword, ':')
+            ) {
+                $usernamePassword = \base64_decode($usernamePassword);
+            }
+
             $options[\CURLOPT_HTTPAUTH] = \CURLAUTH_BASIC;
-            $options[\CURLOPT_USERPWD] = $credentials;
+            $options[\CURLOPT_USERPWD] = $usernamePassword;
         }
 
         return $options;

@@ -23,8 +23,44 @@ use function substr;
  * Entity
  * Base class for entity objects.
  */
-abstract class Entity implements EntityInterface
+abstract class Entity extends \StdClass implements EntityInterface, \JsonSerializable
 {
+    /**
+     * @var array
+     */
+    protected static $protectedProperties = [
+        'client' => true,
+    ];
+
+    /**
+     * Reference to the client
+     * @var \PrintNode\Request
+     */
+    protected $client;
+
+    /**
+     * @param \PrintNode\Request $parentClient
+     */
+    public function __construct(\PrintNode\Request $parentClient)
+    {
+        $this->client = $parentClient;
+    }
+
+    /**
+     * Maps a json object to this entity
+     *
+     * @param array $json The JSON to map to this entity
+     * @return bool
+     */
+    public function mapValuesFromJson($json)
+    {
+        foreach ($json as $key => $value) {
+            $this->$key = $value;
+        }
+
+        return true;
+    }
+
     /**
      * Recursively cast an object into an array.
      *
@@ -34,31 +70,42 @@ abstract class Entity implements EntityInterface
      */
     private static function toArrayRecursive($object)
     {
-        $output = get_object_vars($object);
+        $properties = get_object_vars($object);
 
-        foreach ($output as $key => $value) {
+        foreach ($properties as $property => $value) {
+            if (isset(self::$protectedProperties[$property])) {
+                continue;
+            }
+
             if ($value instanceof DateTime) {
-                $output[$key] = $value->format('c');
+                $properties[$property] = $value->format('c');
             } elseif (is_object($value)) {
-                $output[$key] = static::toArrayRecursive($value);
+                $properties[$property] = static::toArrayRecursive(clone $value);
             }
         }
 
-        return $output;
+        if (!empty(self::$protectedProperties)) {
+            foreach (\array_keys(self::$protectedProperties) as $property) {
+                unset($properties[$property]);
+            }
+        }
+
+        return $properties;
     }
 
     /**
      * Map array of data to an entity
      *
+     * @param Request $client
      * @param mixed $entityName
      * @param mixed $data
      *
      * @return Entity
      * @throws \Exception
      */
-    private static function mapDataToEntity($entityName, \stdClass $data)
+    private static function mapDataToEntity(Request $client, $entityName, \stdClass $data)
     {
-        $entity = new $entityName();
+        $entity = new $entityName($client);
 
         if (!($entity instanceof Entity)) {
             throw new RuntimeException(
@@ -71,31 +118,52 @@ abstract class Entity implements EntityInterface
         $foreignKeyEntityMap = $entity->foreignKeyEntityMap();
         $properties = array_keys(get_object_vars($data));
 
-        foreach ($properties as $propertyName) {
-            if (!property_exists($entity, $propertyName)) {
-                throw new \UnexpectedValueException(
-                    sprintf(
-                        'Property %s->%s does not exist',
-                        get_class($entity),
-                        $propertyName
-                    )
-                );
-            }
+        $entity->mapValuesFromJson($data);
 
+        foreach ($properties as $propertyName) {
             if (isset($foreignKeyEntityMap[$propertyName])) {
                 $entity->$propertyName = self::mapDataToEntity(
+                    $client,
                     $foreignKeyEntityMap[$propertyName],
                     $data->$propertyName
                 );
+            /*
             } elseif (is_string($data->$propertyName) &&
                 preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/', $data->$propertyName)) {
                 $entity->$propertyName = new DateTime($data->$propertyName);
             } else {
                 $entity->$propertyName = json_decode(json_encode($data->$propertyName), true);
+            */
             }
         }
 
         return $entity;
+    }
+
+    /**
+     * Make an array of specified entity from a Response
+     *
+     * @param Request      $client
+     * @param string       $entityName
+     * @param string|array|\stdClass $content
+     *
+     * @return string|Entity|Entity[]
+     * @throws \Exception
+     */
+    public static function makeFromResponse(Request $client, $entityName, $content)
+    {
+        $output = [];
+        if (is_array($content)) {
+            foreach ($content as $entityData) {
+                $output[] = self::makeFromResponse($client, $entityName, $entityData);
+            }
+        } elseif (is_object($content)) {
+            $output = self::mapDataToEntity($client, $entityName, $content);
+        } else {
+            $output = $content;
+        }
+
+        return $output;
     }
 
     /**
@@ -122,6 +190,11 @@ abstract class Entity implements EntityInterface
         return (string)$this->dataToJson($this->toArray());
     }
 
+    public function jsonSerialize()
+    {
+        return $this->toArray();
+    }
+
     public function dataToJson($data)
     {
         $result = json_encode($data);
@@ -143,6 +216,10 @@ abstract class Entity implements EntityInterface
      */
     public function __set($propertyName, $value)
     {
+        if (isset(self::$protectedProperties[$propertyName])) {
+            throw new \PrintNode\Exception\InvalidArgumentException($propertyName . ' is a protected property.');
+        }
+
         if (!property_exists($this, $propertyName)) {
             throw new InvalidArgumentException(
                 sprintf(
@@ -152,6 +229,7 @@ abstract class Entity implements EntityInterface
                 )
             );
         }
+
         $this->$propertyName = $value;
     }
 
@@ -221,27 +299,10 @@ abstract class Entity implements EntityInterface
     }
 
     /**
-     * Make an array of specified entity from a Response
-     *
-     * @param string       $entityName
-     * @param string|array|\stdClass $content
-     *
-     * @return string|Entity|Entity[]
-     * @throws \Exception
+     * @inheritDoc
      */
-    public static function makeFromResponse($entityName, $content)
+    public function foreignKeyEntityMap()
     {
-        $output = [];
-        if (is_array($content)) {
-            foreach ($content as $entityData) {
-                $output[] = self::makeFromResponse($entityName, $entityData);
-            }
-        } elseif (is_object($content)) {
-            $output = self::mapDataToEntity($entityName, $content);
-        } else {
-            $output = $content;
-        }
-
-        return $output;
+        return [];
     }
 }
