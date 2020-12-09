@@ -121,7 +121,7 @@ abstract class Entity extends \StdClass implements EntityInterface, \JsonSeriali
         $entity->mapValuesFromJson($data);
 
         foreach ($properties as $propertyName) {
-            if (isset($foreignKeyEntityMap[$propertyName])) {
+            if (isset($foreignKeyEntityMap[$propertyName]) && isset($data->$propertyName)) {
                 $entity->$propertyName = self::mapDataToEntity(
                     $client,
                     $foreignKeyEntityMap[$propertyName],
